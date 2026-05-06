@@ -35,7 +35,9 @@ const parseMongoUri = () => {
   }
 
   if (uri.includes("+srv")) {
-    throw new Error("MONGO_URI must not use +srv. Use standard mongodb:// URI.");
+    throw new Error(
+      "MONGO_URI must not use +srv. Use standard mongodb:// URI.",
+    );
   }
 
   const authorityMatch = uri.match(/^mongodb:\/\/(?:[^@/]+@)?([^/?]+)/i);
@@ -61,7 +63,7 @@ const parseMongoUri = () => {
 
   if (hasPlaceholderHost) {
     throw new Error(
-      "MONGO_URI uses placeholder hostname 'host'. Replace it with your real MongoDB host (for local DB use 127.0.0.1)."
+      "MONGO_URI uses placeholder hostname 'host'. Replace it with your real MongoDB host (for local DB use 127.0.0.1).",
     );
   }
 
@@ -80,8 +82,14 @@ const config = {
 
   mongo: {
     uri: parseMongoUri(),
-    serverSelectionTimeoutMs: parseIntEnv("MONGO_SERVER_SELECTION_TIMEOUT_MS", "5000", { min: 1000 }),
-    socketTimeoutMs: parseIntEnv("MONGO_SOCKET_TIMEOUT_MS", "45000", { min: 1000 }),
+    serverSelectionTimeoutMs: parseIntEnv(
+      "MONGO_SERVER_SELECTION_TIMEOUT_MS",
+      "5000",
+      { min: 1000 },
+    ),
+    socketTimeoutMs: parseIntEnv("MONGO_SOCKET_TIMEOUT_MS", "45000", {
+      min: 1000,
+    }),
   },
 
   jwt: {
@@ -98,13 +106,15 @@ const config = {
   },
 
   rateLimit: {
-    windowMs: parseIntEnv("RATE_LIMIT_WINDOW_MS", "900000", { min: 1000 }),
-    max: parseIntEnv("RATE_LIMIT_MAX", "100", { min: 1 }),
-    authMax: parseIntEnv("AUTH_RATE_LIMIT_MAX", "10", { min: 1 }),
+    windowMs: parseIntEnv("RATE_LIMIT_WINDOW_MS", "900000", { min: 1000 }), // 15 минут
+    max: parseIntEnv("RATE_LIMIT_MAX", "500", { min: 1 }), // например, 500 запросов
+    authMax: parseIntEnv("AUTH_RATE_LIMIT_MAX", "50", { min: 1 }), // например, 50 запросов
   },
 
   idea: {
-    commentsPreviewLimit: parseIntEnv("IDEA_COMMENTS_PREVIEW_LIMIT", "50", { min: 1 }),
+    commentsPreviewLimit: parseIntEnv("IDEA_COMMENTS_PREVIEW_LIMIT", "50", {
+      min: 1,
+    }),
   },
 
   websocket: {
