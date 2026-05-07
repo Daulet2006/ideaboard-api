@@ -6,20 +6,38 @@ import { deleteUploadThingFiles, uploadMulterFilesToUploadThing } from "../utils
 import { sendToUser } from "../websocket/ws.manager.js";
 
 const register = async ({ username, email, password }) => {
-  const existing = await User.findOne({ $or: [{ email }, { username }] }).lean();
+  const normalizedUsername = username?.trim();
+  const normalizedEmail = email?.trim().toLowerCase();
+
+  if (!normalizedUsername || !normalizedEmail) {
+    throw new AppError("Username and email are required.", 422);
+  }
+
+  const existing = await User.findOne({
+    $or: [{ email: normalizedEmail }, { username: normalizedUsername }],
+  }).lean();
   if (existing) {
-    const field = existing.email === email ? "email" : "username";
+    const field = existing.email === normalizedEmail ? "email" : "username";
     throw new AppError(`An account with that ${field} already exists.`, 409);
   }
 
-  const user = await User.create({ username, email, password });
+  const user = await User.create({
+    username: normalizedUsername,
+    email: normalizedEmail,
+    password,
+  });
   const token = signToken(user._id.toString());
 
   return { token, user: user.toPublicProfile() };
 };
 
 const login = async ({ email, password }) => {
-  const user = await User.findOne({ email }).select("+password");
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (!normalizedEmail) {
+    throw new AppError("Email is required.", 422);
+  }
+
+  const user = await User.findOne({ email: normalizedEmail }).select("+password");
   if (!user) {
     throw new AppError("Invalid email or password.", 401);
   }

@@ -1,13 +1,13 @@
 import Joi from "joi";
 
 const register = Joi.object({
-  username: Joi.string().pattern(/^[a-zA-Z0-9_]+$/).min(3).max(30).required().messages({
+  username: Joi.string().trim().pattern(/^[a-zA-Z0-9_]+$/).min(3).max(30).required().messages({
     "string.pattern.base": "Username may only contain letters, numbers, and underscores",
     "string.min": "Username must be at least 3 characters",
     "string.max": "Username cannot exceed 30 characters",
     "any.required": "Username is required",
   }),
-  email: Joi.string().email({ tlds: { allow: false } }).required().messages({
+  email: Joi.string().trim().lowercase().email({ tlds: { allow: false } }).required().messages({
     "string.email": "Must be a valid email address",
     "any.required": "Email is required",
   }),
@@ -19,7 +19,7 @@ const register = Joi.object({
 });
 
 const login = Joi.object({
-  email: Joi.string().email({ tlds: { allow: false } }).required(),
+  email: Joi.string().trim().lowercase().email({ tlds: { allow: false } }).required(),
   password: Joi.string().required(),
 });
 
