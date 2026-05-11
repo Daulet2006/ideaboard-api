@@ -112,7 +112,10 @@ const getIdeaById = async (ideaId, userId = null) => {
     .populate("author", "username avatarUrl role")
     .populate({
       path: "comments",
-      populate: { path: "author", select: "username avatarUrl role" },
+      populate: [
+        { path: "author", select: "username avatarUrl role" },
+        { path: "likesCount" },
+      ],
       options: { sort: { createdAt: -1 }, limit: config.idea.commentsPreviewLimit },
     });
 
@@ -183,7 +186,10 @@ const deleteIdea = async (ideaId, currentUser) => {
   }
 
   await deleteUploadThingFiles(idea.files.map((file) => file.fileKey));
-  await Vote.deleteMany({ idea: idea._id });
+  const commentIds = await Comment.find({ idea: idea._id }).distinct("_id");
+  await Vote.deleteMany({
+    $or: [{ idea: idea._id }, { comment: { $in: commentIds } }],
+  });
   await Comment.deleteMany({ idea: idea._id });
   await idea.deleteOne();
 };

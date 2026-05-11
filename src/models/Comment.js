@@ -21,11 +21,35 @@ const commentSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    parentComment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Comment",
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
+
+commentSchema.index({ idea: 1, parentComment: 1, createdAt: -1 });
+
+commentSchema.virtual("replies", {
+  ref: "Comment",
+  localField: "_id",
+  foreignField: "parentComment",
+});
+
+commentSchema.virtual("likesCount", {
+  ref: "Vote",
+  localField: "_id",
+  foreignField: "comment",
+  count: true,
+  match: { value: 1 },
+});
 
 const Comment = mongoose.model("Comment", commentSchema);
 

@@ -1,5 +1,6 @@
 import Comment from "../models/Comment.js";
 import Idea from "../models/Idea.js";
+import Vote from "../models/Vote.js";
 import AppError from "../utils/AppError.js";
 
 const canModerateContent = (user) => ["admin", "moderator"].includes(user?.role);
@@ -9,12 +10,45 @@ const canManageComment = (comment, user) => {
   return comment.author.toString() === user._id.toString() || canModerateContent(user);
 };
 
-const addComment = async (authorId, ideaId, content) => {
+const collectThreadCommentIds = async (rootCommentId) => {
+  const collectedIds = [rootCommentId];
+  let frontierIds = [rootCommentId];
+
+  while (frontierIds.length > 0) {
+    const childComments = await Comment.find({ parentComment: { $in: frontierIds } })
+      .select("_id")
+      .lean();
+
+    frontierIds = childComments.map((comment) => comment._id);
+    collectedIds.push(...frontierIds);
+  }
+
+  return collectedIds;
+};
+
+const addComment = async (authorId, ideaId, content, parentCommentId = null) => {
   const idea = await Idea.findById(ideaId).select("_id").lean();
   if (!idea) throw new AppError("Idea not found.", 404);
 
-  const comment = await Comment.create({ content, author: authorId, idea: ideaId });
+  if (parentCommentId) {
+    const parentComment = await Comment.findOne({ _id: parentCommentId, idea: ideaId })
+      .select("_id")
+      .lean();
+
+    if (!parentComment) {
+      throw new AppError("Parent comment not found for this idea.", 404);
+    }
+  }
+
+  const comment = await Comment.create({
+    content,
+    author: authorId,
+    idea: ideaId,
+    parentComment: parentCommentId || null,
+  });
+
   await comment.populate("author", "username avatarUrl role");
+  await comment.populate("likesCount");
 
   return comment;
 };
@@ -27,7 +61,12 @@ const deleteComment = async (commentId, currentUser) => {
     throw new AppError("You are not allowed to delete this comment.", 403);
   }
 
-  await comment.deleteOne();
+  const threadCommentIds = await collectThreadCommentIds(comment._id);
+
+  await Promise.all([
+    Vote.deleteMany({ comment: { $in: threadCommentIds } }),
+    Comment.deleteMany({ _id: { $in: threadCommentIds } }),
+  ]);
 };
 
 const updateComment = async (commentId, currentUser, content) => {
@@ -41,6 +80,7 @@ const updateComment = async (commentId, currentUser, content) => {
   comment.content = content;
   await comment.save();
   await comment.populate("author", "username avatarUrl role");
+  await comment.populate("likesCount");
 
   return comment;
 };
@@ -49,10 +89,16 @@ const getCommentsByIdea = async (ideaId) => {
   const idea = await Idea.findById(ideaId).select("_id").lean();
   if (!idea) throw new AppError("Idea not found.", 404);
 
-  return Comment.find({ idea: ideaId })
+  const comments = await Comment.find({ idea: ideaId })
     .sort({ createdAt: -1 })
     .populate("author", "username avatarUrl role")
-    .lean();
+    .populate("likesCount");
+
+  return comments.map((comment) => {
+    const plainComment = comment.toObject();
+    plainComment.likesCount = plainComment.likesCount ?? 0;
+    return plainComment;
+  });
 };
 
 export default { addComment, deleteComment, getCommentsByIdea, updateComment };

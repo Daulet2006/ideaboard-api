@@ -9,7 +9,12 @@ const getComments = catchAsync(async (req, res) => {
 });
 
 const addComment = catchAsync(async (req, res) => {
-  const comment = await commentService.addComment(req.user._id, req.params.id, req.body.content);
+  const comment = await commentService.addComment(
+    req.user._id,
+    req.params.id,
+    req.body.content,
+    req.body.parentComment
+  );
 
   broadcast({
     type: "NEW_COMMENT",

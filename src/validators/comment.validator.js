@@ -6,6 +6,10 @@ const create = Joi.object({
     "string.max": "Comment cannot exceed 1000 characters",
     "any.required": "Comment content is required",
   }),
+  parentComment: Joi.string().hex().length(24).optional().messages({
+    "string.hex": "Parent comment id must be a valid ObjectId",
+    "string.length": "Parent comment id must be a valid ObjectId",
+  }),
 });
 
 const update = Joi.object({

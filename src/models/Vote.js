@@ -10,7 +10,14 @@ const voteSchema = new mongoose.Schema(
     idea: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Idea",
-      required: true,
+      default: null,
+      index: true,
+    },
+    comment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Comment",
+      default: null,
+      index: true,
     },
     value: {
       type: Number,
@@ -26,7 +33,25 @@ const voteSchema = new mongoose.Schema(
   }
 );
 
-voteSchema.index({ user: 1, idea: 1 }, { unique: true });
+voteSchema.pre("validate", function validateVoteTarget(next) {
+  const hasIdea = Boolean(this.idea);
+  const hasComment = Boolean(this.comment);
+
+  if (hasIdea === hasComment) {
+    this.invalidate("idea", "Vote must target exactly one entity: idea or comment.");
+  }
+
+  next();
+});
+
+voteSchema.index(
+  { user: 1, idea: 1 },
+  { unique: true, partialFilterExpression: { idea: { $type: "objectId" } } }
+);
+voteSchema.index(
+  { user: 1, comment: 1 },
+  { unique: true, partialFilterExpression: { comment: { $type: "objectId" } } }
+);
 
 const Vote = mongoose.model("Vote", voteSchema);
 
