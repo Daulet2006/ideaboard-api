@@ -3,6 +3,66 @@ import Idea from "../models/Idea.js";
 import Vote from "../models/Vote.js";
 import AppError from "../utils/AppError.js";
 
+const enrichCommentsWithVotes = async (comments, userId = null) => {
+  if (!comments.length) return comments;
+
+  const commentIds = comments.map((comment) => comment._id);
+  const voteStats = await Vote.aggregate([
+    { $match: { comment: { $in: commentIds } } },
+    {
+      $group: {
+        _id: "$comment",
+        votesCount: { $sum: "$value" },
+        likesCount: {
+          $sum: {
+            $cond: [{ $eq: ["$value", 1] }, 1, 0],
+          },
+        },
+        dislikesCount: {
+          $sum: {
+            $cond: [{ $eq: ["$value", -1] }, 1, 0],
+          },
+        },
+      },
+    },
+  ]);
+
+  const statsMap = new Map(
+    voteStats.map((stats) => [
+      stats._id.toString(),
+      {
+        votesCount: stats.votesCount ?? 0,
+        likesCount: stats.likesCount ?? 0,
+        dislikesCount: stats.dislikesCount ?? 0,
+      },
+    ])
+  );
+
+  const userVoteMap = new Map();
+  if (userId) {
+    const myVotes = await Vote.find({ user: userId, comment: { $in: commentIds } })
+      .select("comment value")
+      .lean();
+
+    myVotes.forEach((vote) => {
+      userVoteMap.set(vote.comment.toString(), vote.value);
+    });
+  }
+
+  return comments.map((comment) => {
+    const plainComment = typeof comment.toObject === "function" ? comment.toObject() : comment;
+    const stats = statsMap.get(plainComment._id.toString());
+
+    return {
+      ...plainComment,
+      votesCount: stats?.votesCount ?? 0,
+      likesCount: stats?.likesCount ?? 0,
+      dislikesCount: stats?.dislikesCount ?? 0,
+      myVote: userVoteMap.get(plainComment._id.toString()) ?? null,
+    };
+  });
+};
+
 const canModerateContent = (user) => ["admin", "moderator"].includes(user?.role);
 
 const canManageComment = (comment, user) => {
@@ -48,9 +108,8 @@ const addComment = async (authorId, ideaId, content, parentCommentId = null) => 
   });
 
   await comment.populate("author", "username avatarUrl role");
-  await comment.populate("likesCount");
-
-  return comment;
+  const [enrichedComment] = await enrichCommentsWithVotes([comment]);
+  return enrichedComment;
 };
 
 const deleteComment = async (commentId, currentUser) => {
@@ -80,25 +139,19 @@ const updateComment = async (commentId, currentUser, content) => {
   comment.content = content;
   await comment.save();
   await comment.populate("author", "username avatarUrl role");
-  await comment.populate("likesCount");
-
-  return comment;
+  const [enrichedComment] = await enrichCommentsWithVotes([comment], currentUser?._id ?? null);
+  return enrichedComment;
 };
 
-const getCommentsByIdea = async (ideaId) => {
+const getCommentsByIdea = async (ideaId, userId = null) => {
   const idea = await Idea.findById(ideaId).select("_id").lean();
   if (!idea) throw new AppError("Idea not found.", 404);
 
   const comments = await Comment.find({ idea: ideaId })
     .sort({ createdAt: -1 })
-    .populate("author", "username avatarUrl role")
-    .populate("likesCount");
+    .populate("author", "username avatarUrl role");
 
-  return comments.map((comment) => {
-    const plainComment = comment.toObject();
-    plainComment.likesCount = plainComment.likesCount ?? 0;
-    return plainComment;
-  });
+  return enrichCommentsWithVotes(comments, userId);
 };
 
 export default { addComment, deleteComment, getCommentsByIdea, updateComment };

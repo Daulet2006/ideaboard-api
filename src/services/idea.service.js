@@ -20,8 +20,8 @@ const buildQuery = (params) => {
   }
 
   const sortMap = {
-    votes: { votesCount: -1 },
-    "-votes": { votesCount: 1 },
+    "-votes": { votesCount: -1 },
+    votes: { votesCount: 1 },
     date: { createdAt: 1 },
     "-date": { createdAt: -1 },
   };

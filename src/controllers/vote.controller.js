@@ -23,4 +23,20 @@ const getMyVote = catchAsync(async (req, res) => {
   sendSuccess(res, 200, "Vote status retrieved.", { voteState });
 });
 
-export { castVote, getMyVote };
+const castCommentVote = catchAsync(async (req, res) => {
+  const voteData = await voteService.castCommentVote(req.user._id, req.params.commentId, req.body.value);
+
+  broadcast({
+    type: "COMMENT_VOTE_UPDATE",
+    payload: voteData,
+  });
+
+  sendSuccess(res, 200, "Comment vote recorded.", voteData);
+});
+
+const getMyCommentVote = catchAsync(async (req, res) => {
+  const voteState = await voteService.getUserCommentVote(req.user._id, req.params.commentId);
+  sendSuccess(res, 200, "Comment vote status retrieved.", { voteState });
+});
+
+export { castVote, castCommentVote, getMyCommentVote, getMyVote };

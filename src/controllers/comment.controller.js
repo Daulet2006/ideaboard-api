@@ -4,7 +4,7 @@ import { sendSuccess } from "../utils/apiResponse.js";
 import catchAsync from "../utils/catchAsync.js";
 
 const getComments = catchAsync(async (req, res) => {
-  const comments = await commentService.getCommentsByIdea(req.params.id);
+  const comments = await commentService.getCommentsByIdea(req.params.id, req.user?._id || null);
   sendSuccess(res, 200, "Comments retrieved.", { comments });
 });
 

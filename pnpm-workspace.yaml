@@ -1,3 +1,4 @@
 allowBuilds:
   bcrypt: false
   msgpackr-extract: false
+  unrs-resolver: false

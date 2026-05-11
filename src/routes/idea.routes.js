@@ -36,7 +36,7 @@ router.delete("/:id", protect, ideaController.deleteIdea);
 router.post("/:id/vote", protect, validate(voteSchema), voteController.castVote);
 router.get("/:id/vote", protect, voteController.getMyVote);
 
-router.get("/:id/comments", commentController.getComments);
+router.get("/:id/comments", optionalAuth, commentController.getComments);
 router.post("/:id/comments", protect, validate(createComment), commentController.addComment);
 
 export default router;
