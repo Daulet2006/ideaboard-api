@@ -1,9 +1,14 @@
 import voteService from "../services/vote.service.js";
 import { broadcast } from "../websocket/ws.manager.js";
+import AppError from "../utils/AppError.js";
 import { sendSuccess } from "../utils/apiResponse.js";
 import catchAsync from "../utils/catchAsync.js";
 
 const castVote = catchAsync(async (req, res) => {
+  if (req.body.voteType && req.body.voteType !== "idea") {
+    throw new AppError("Vote type must be idea for idea votes.", 422);
+  }
+
   const { idea, voteState } = await voteService.castVote(req.user._id, req.params.id, req.body.value);
 
   broadcast({
@@ -24,6 +29,10 @@ const getMyVote = catchAsync(async (req, res) => {
 });
 
 const castCommentVote = catchAsync(async (req, res) => {
+  if (req.body.voteType && req.body.voteType !== "comment") {
+    throw new AppError("Vote type must be comment for comment votes.", 422);
+  }
+
   const voteData = await voteService.castCommentVote(req.user._id, req.params.commentId, req.body.value);
 
   broadcast({

@@ -19,6 +19,14 @@ const voteSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    voteType: {
+      type: String,
+      enum: {
+        values: ["idea", "comment"],
+        message: "Vote type must be either idea or comment",
+      },
+      required: [true, "Vote type is required"],
+    },
     value: {
       type: Number,
       enum: {
@@ -39,6 +47,16 @@ voteSchema.pre("validate", function validateVoteTarget(next) {
 
   if (hasIdea === hasComment) {
     this.invalidate("idea", "Vote must target exactly one entity: idea or comment.");
+    return next();
+  }
+
+  const resolvedVoteType = hasIdea ? "idea" : "comment";
+  if (!this.voteType) {
+    this.voteType = resolvedVoteType;
+  }
+
+  if (this.voteType !== resolvedVoteType) {
+    this.invalidate("voteType", `Vote type must match target entity: ${resolvedVoteType}`);
   }
 
   next();

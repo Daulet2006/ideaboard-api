@@ -19,5 +19,21 @@ describe("API integration", () => {
     expect(res.body.status).toBe("fail");
     expect(res.body.message).toContain("Route GET /api/not-existing-route not found.");
   });
-});
 
+  test("GET /api/ideas/popular validates query params", async () => {
+    const res = await request(app).get("/api/ideas/popular?page=0&limit=1000");
+
+    expect(res.status).toBe(422);
+    expect(res.body.status).toBe("fail");
+    expect(typeof res.body.message).toBe("string");
+    expect(res.body.message).toContain("must be greater than or equal to 1");
+  });
+
+  test("GET /api/auth/notifications/unread-count requires auth", async () => {
+    const res = await request(app).get("/api/auth/notifications/unread-count");
+
+    expect(res.status).toBe(401);
+    expect(res.body.status).toBe("fail");
+    expect(typeof res.body.message).toBe("string");
+  });
+});

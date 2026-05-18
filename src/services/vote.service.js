@@ -29,7 +29,7 @@ const castVote = async (userId, ideaId, value) => {
       let voteState;
 
       if (!existingVote) {
-        await Vote.create([{ user: userId, idea: ideaId, value }], { session });
+        await Vote.create([{ user: userId, idea: ideaId, voteType: "idea", value }], { session });
         delta = value;
         voteState = value;
       } else if (existingVote.value === value) {
@@ -103,7 +103,7 @@ const castCommentVote = async (userId, commentId, value) => {
       let voteState;
 
       if (!existingVote) {
-        await Vote.create([{ user: userId, comment: commentId, value }], { session });
+        await Vote.create([{ user: userId, comment: commentId, voteType: "comment", value }], { session });
         voteState = value;
       } else if (existingVote.value === value) {
         await existingVote.deleteOne({ session });

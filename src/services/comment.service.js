@@ -158,7 +158,12 @@ const updateComment = async (commentId, currentUser, content) => {
     throw new AppError("You are not allowed to update this comment.", 403);
   }
 
-  comment.content = content;
+  const normalizedContent = typeof content === "string" ? content.trim() : content;
+  const hasContentChanged = normalizedContent !== comment.content;
+  comment.content = normalizedContent;
+  if (hasContentChanged && !comment.isEdited) {
+    comment.isEdited = true;
+  }
   await comment.save();
   await comment.populate("author", "username avatarUrl role");
   const [enrichedComment] = await enrichCommentsWithVotes([comment], currentUser?._id ?? null);
