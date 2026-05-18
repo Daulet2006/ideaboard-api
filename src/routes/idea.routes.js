@@ -7,13 +7,19 @@ import { optionalAuth, protect } from "../middlewares/auth.middleware.js";
 import { normalizeIdeaMultipartFields, uploadIdeaFiles } from "../middlewares/upload.middleware.js";
 import validate from "../middlewares/validate.middleware.js";
 import { create as createComment } from "../validators/comment.validator.js";
-import { create as createIdea, query as queryIdea, update as updateIdea } from "../validators/idea.validator.js";
+import {
+  create as createIdea,
+  popularQuery,
+  query as queryIdea,
+  update as updateIdea,
+} from "../validators/idea.validator.js";
 import { vote as voteSchema } from "../validators/vote.validator.js";
 
 const router = Router();
 
 router.get("/", optionalAuth, validate(queryIdea, "query"), ideaController.getAllIdeas);
 router.get("/me", protect, validate(queryIdea, "query"), ideaController.getMyIdeas);
+router.get("/popular", optionalAuth, validate(popularQuery, "query"), ideaController.getPopularIdeas);
 router.get("/:id", optionalAuth, ideaController.getIdea);
 router.post(
   "/",

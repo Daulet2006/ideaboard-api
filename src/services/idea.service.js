@@ -107,6 +107,91 @@ const getIdeasByAuthor = async (authorId, queryParams, userId = null) => {
   };
 };
 
+const getPopularIdeas = async (queryParams, userId = null) => {
+  const page = Math.max(1, Number.parseInt(queryParams?.page, 10) || 1);
+  const limit = Math.min(50, Math.max(1, Number.parseInt(queryParams?.limit, 10) || 10));
+  const skip = (page - 1) * limit;
+
+  const [aggregated] = await Vote.aggregate([
+    {
+      $match: {
+        idea: { $ne: null },
+        value: 1,
+      },
+    },
+    {
+      $group: {
+        _id: "$idea",
+        likesCount: { $sum: 1 },
+      },
+    },
+    { $sort: { likesCount: -1, _id: 1 } },
+    {
+      $facet: {
+        totals: [{ $count: "total" }],
+        items: [
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $lookup: {
+              from: "ideas",
+              localField: "_id",
+              foreignField: "_id",
+              as: "idea",
+            },
+          },
+          { $unwind: "$idea" },
+          {
+            $lookup: {
+              from: "users",
+              localField: "idea.author",
+              foreignField: "_id",
+              as: "author",
+            },
+          },
+          {
+            $unwind: {
+              path: "$author",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $project: {
+              _id: "$idea._id",
+              title: "$idea.title",
+              description: "$idea.description",
+              author: {
+                _id: "$author._id",
+                username: "$author.username",
+                avatarUrl: "$author.avatarUrl",
+                role: "$author.role",
+              },
+              votesCount: "$idea.votesCount",
+              tags: "$idea.tags",
+              files: "$idea.files",
+              createdAt: "$idea.createdAt",
+              updatedAt: "$idea.updatedAt",
+              likesCount: 1,
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  const total = aggregated?.totals?.[0]?.total || 0;
+  const rawItems = aggregated?.items || [];
+  const items = await withUserVotes(rawItems, userId);
+
+  return {
+    items,
+    page,
+    totalPages: Math.ceil(total / limit),
+    total,
+    limit,
+  };
+};
+
 const getIdeaById = async (ideaId, userId = null) => {
   const idea = await Idea.findById(ideaId)
     .populate("author", "username avatarUrl role")
@@ -194,4 +279,12 @@ const deleteIdea = async (ideaId, currentUser) => {
   await idea.deleteOne();
 };
 
-export default { createIdea, deleteIdea, getAllIdeas, getIdeaById, getIdeasByAuthor, updateIdea };
+export default {
+  createIdea,
+  deleteIdea,
+  getAllIdeas,
+  getIdeaById,
+  getIdeasByAuthor,
+  getPopularIdeas,
+  updateIdea,
+};

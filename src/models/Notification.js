@@ -30,8 +30,25 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["moderation", "direct", "system"],
+      enum: [
+        "moderation",
+        "direct",
+        "system",
+        "LIKE_IDEA",
+        "LIKE_COMMENT",
+        "REPLY_COMMENT",
+      ],
       default: "direct",
+    },
+    entityId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+      index: true,
+    },
+    entityType: {
+      type: String,
+      enum: ["idea", "comment"],
+      default: null,
     },
     readAt: {
       type: Date,

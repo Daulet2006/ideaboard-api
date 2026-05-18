@@ -57,6 +57,11 @@ router.get(
   validate(notificationsQuery, "query"),
   authController.getMyNotifications
 );
+router.get(
+  "/notifications/unread-count",
+  protect,
+  authController.getMyUnreadNotificationCount
+);
 router.patch(
   "/notifications/:notificationId/read",
   protect,

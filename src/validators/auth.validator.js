@@ -56,7 +56,9 @@ const sendNotification = Joi.object({
   recipientId: Joi.string().required(),
   title: Joi.string().trim().min(2).max(120).required(),
   message: Joi.string().trim().min(2).max(1000).required(),
-  type: Joi.string().valid("direct", "moderation", "system").default("direct"),
+  type: Joi.string()
+    .valid("direct", "moderation", "system", "LIKE_IDEA", "LIKE_COMMENT", "REPLY_COMMENT")
+    .default("direct"),
 });
 
 const notificationsQuery = Joi.object({

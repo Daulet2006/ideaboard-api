@@ -2,7 +2,12 @@ import mongoose from "mongoose";
 
 import Comment from "../models/Comment.js";
 import Idea from "../models/Idea.js";
+import User from "../models/User.js";
 import Vote from "../models/Vote.js";
+import notificationService, {
+  NOTIFICATION_ENTITY_TYPES,
+  NOTIFICATION_TYPES,
+} from "./notification.service.js";
 import AppError from "../utils/AppError.js";
 
 const castVote = async (userId, ideaId, value) => {
@@ -48,10 +53,33 @@ const castVote = async (userId, ideaId, value) => {
         throw new AppError("Idea not found after vote update.", 404);
       }
 
-      result = { idea: updatedIdea, voteState };
+      result = {
+        idea: updatedIdea,
+        voteState,
+        notifyRecipientId: voteState === 1 ? idea.author.toString() : null,
+        ideaTitle: idea.title,
+      };
     });
 
-    return result;
+    if (result?.notifyRecipientId) {
+      const actor = await User.findById(userId).select("username").lean();
+      if (actor?.username) {
+        await notificationService.createNotification({
+          recipientId: result.notifyRecipientId,
+          senderId: userId,
+          type: NOTIFICATION_TYPES.LIKE_IDEA,
+          title: "New idea like",
+          message: `${actor.username} liked your idea${result.ideaTitle ? ` "${result.ideaTitle}"` : ""}.`,
+          entityId: ideaId,
+          entityType: NOTIFICATION_ENTITY_TYPES.IDEA,
+        });
+      }
+    }
+
+    return {
+      idea: result.idea,
+      voteState: result.voteState,
+    };
   } finally {
     await session.endSession();
   }
@@ -113,10 +141,33 @@ const castCommentVote = async (userId, commentId, value) => {
         votesCount: stats?.votesCount ?? 0,
         likesCount: stats?.likesCount ?? 0,
         dislikesCount: stats?.dislikesCount ?? 0,
+        notifyRecipientId: voteState === 1 ? comment.author.toString() : null,
       };
     });
 
-    return result;
+    if (result?.notifyRecipientId) {
+      const actor = await User.findById(userId).select("username").lean();
+      if (actor?.username) {
+        await notificationService.createNotification({
+          recipientId: result.notifyRecipientId,
+          senderId: userId,
+          type: NOTIFICATION_TYPES.LIKE_COMMENT,
+          title: "New comment like",
+          message: `${actor.username} liked your comment.`,
+          entityId: commentId,
+          entityType: NOTIFICATION_ENTITY_TYPES.COMMENT,
+        });
+      }
+    }
+
+    return {
+      commentId: result.commentId,
+      ideaId: result.ideaId,
+      voteState: result.voteState,
+      votesCount: result.votesCount,
+      likesCount: result.likesCount,
+      dislikesCount: result.dislikesCount,
+    };
   } finally {
     await session.endSession();
   }

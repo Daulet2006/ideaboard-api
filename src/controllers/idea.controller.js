@@ -13,6 +13,21 @@ const getMyIdeas = catchAsync(async (req, res) => {
   sendSuccess(res, 200, "Your ideas retrieved.", { ideas }, meta);
 });
 
+const getPopularIdeas = catchAsync(async (req, res) => {
+  const { items, page, totalPages, total, limit } = await ideaService.getPopularIdeas(
+    req.query,
+    req.user?._id || null
+  );
+
+  sendSuccess(
+    res,
+    200,
+    "Popular ideas retrieved.",
+    { items },
+    { page, totalPages, total, limit }
+  );
+});
+
 const getIdea = catchAsync(async (req, res) => {
   const idea = await ideaService.getIdeaById(req.params.id, req.user?._id || null);
   sendSuccess(res, 200, "Idea retrieved.", { idea });
@@ -36,4 +51,4 @@ const deleteIdea = catchAsync(async (req, res) => {
   sendSuccess(res, 200, "Idea deleted.");
 });
 
-export { createIdea, deleteIdea, getAllIdeas, getIdea, getMyIdeas, updateIdea };
+export { createIdea, deleteIdea, getAllIdeas, getIdea, getMyIdeas, getPopularIdeas, updateIdea };

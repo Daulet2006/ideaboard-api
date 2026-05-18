@@ -47,6 +47,11 @@ const getMyNotifications = catchAsync(async (req, res) => {
   sendSuccess(res, 200, "Notifications retrieved.", { notifications }, meta);
 });
 
+const getMyUnreadNotificationCount = catchAsync(async (req, res) => {
+  const unread = await authService.getMyUnreadNotificationCount(req.user._id);
+  sendSuccess(res, 200, "Unread notification count retrieved.", unread);
+});
+
 const markNotificationRead = catchAsync(async (req, res) => {
   const notification = await authService.markNotificationRead(req.user._id, req.params.notificationId);
   sendSuccess(res, 200, "Notification marked as read.", { notification });
@@ -55,6 +60,7 @@ const markNotificationRead = catchAsync(async (req, res) => {
 export {
   getMe,
   getMyNotifications,
+  getMyUnreadNotificationCount,
   listUsers,
   login,
   markNotificationRead,

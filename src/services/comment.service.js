@@ -1,6 +1,11 @@
 import Comment from "../models/Comment.js";
 import Idea from "../models/Idea.js";
+import User from "../models/User.js";
 import Vote from "../models/Vote.js";
+import notificationService, {
+  NOTIFICATION_ENTITY_TYPES,
+  NOTIFICATION_TYPES,
+} from "./notification.service.js";
 import AppError from "../utils/AppError.js";
 
 const enrichCommentsWithVotes = async (comments, userId = null) => {
@@ -90,9 +95,10 @@ const addComment = async (authorId, ideaId, content, parentCommentId = null) => 
   const idea = await Idea.findById(ideaId).select("_id").lean();
   if (!idea) throw new AppError("Idea not found.", 404);
 
+  let parentComment = null;
   if (parentCommentId) {
-    const parentComment = await Comment.findOne({ _id: parentCommentId, idea: ideaId })
-      .select("_id")
+    parentComment = await Comment.findOne({ _id: parentCommentId, idea: ideaId })
+      .select("_id author")
       .lean();
 
     if (!parentComment) {
@@ -108,6 +114,22 @@ const addComment = async (authorId, ideaId, content, parentCommentId = null) => 
   });
 
   await comment.populate("author", "username avatarUrl role");
+
+  if (parentComment?.author) {
+    const actor = await User.findById(authorId).select("username").lean();
+    if (actor?.username) {
+      await notificationService.createNotification({
+        recipientId: parentComment.author,
+        senderId: authorId,
+        type: NOTIFICATION_TYPES.REPLY_COMMENT,
+        title: "New comment reply",
+        message: `${actor.username} replied to your comment.`,
+        entityId: comment._id,
+        entityType: NOTIFICATION_ENTITY_TYPES.COMMENT,
+      });
+    }
+  }
+
   const [enrichedComment] = await enrichCommentsWithVotes([comment]);
   return enrichedComment;
 };

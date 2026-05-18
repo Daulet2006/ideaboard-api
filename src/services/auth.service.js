@@ -1,9 +1,8 @@
 import User from "../models/User.js";
-import Notification from "../models/Notification.js";
 import AppError from "../utils/AppError.js";
 import { signToken } from "../utils/jwt.js";
+import notificationService from "./notification.service.js";
 import { deleteUploadThingFiles, uploadMulterFilesToUploadThing } from "../utils/uploadthing.js";
-import { sendToUser } from "../websocket/ws.manager.js";
 
 const register = async ({ username, email, password }) => {
   const normalizedUsername = username?.trim();
@@ -207,74 +206,25 @@ const sendNotification = async (senderUser, { recipientId, title, message, type 
     throw new AppError("Only moderators and admins can send direct notifications.", 403);
   }
 
-  const recipient = await User.findById(recipientId);
-  if (!recipient) {
-    throw new AppError("Recipient not found.", 404);
-  }
-
-  const notification = await Notification.create({
-    recipient: recipient._id,
-    sender: senderUser._id,
-    title: title.trim(),
-    message: message.trim(),
+  return notificationService.createNotification({
+    recipientId,
+    senderId: senderUser._id,
+    title,
+    message,
     type,
   });
-
-  await notification.populate("sender", "username role avatarUrl");
-
-  sendToUser(recipient._id.toString(), {
-    type: "NOTIFICATION",
-    payload: { notification },
-  });
-
-  return notification;
 };
 
 const getMyNotifications = async (userId, query) => {
-  const page = Math.max(1, Number.parseInt(query?.page, 10) || 1);
-  const limit = Math.min(100, Math.max(1, Number.parseInt(query?.limit, 10) || 20));
-  const skip = (page - 1) * limit;
-
-  const [notifications, total, unreadCount] = await Promise.all([
-    Notification.find({ recipient: userId })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("sender", "username role avatarUrl")
-      .lean(),
-    Notification.countDocuments({ recipient: userId }),
-    Notification.countDocuments({ recipient: userId, readAt: null }),
-  ]);
-
-  return {
-    notifications,
-    meta: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-      unreadCount,
-    },
-  };
+  return notificationService.getNotifications(userId, query);
 };
 
 const markNotificationRead = async (userId, notificationId) => {
-  const notification = await Notification.findOne({
-    _id: notificationId,
-    recipient: userId,
-  });
+  return notificationService.markRead(userId, notificationId);
+};
 
-  if (!notification) {
-    throw new AppError("Notification not found.", 404);
-  }
-
-  if (!notification.readAt) {
-    notification.readAt = new Date();
-    await notification.save();
-  }
-
-  await notification.populate("sender", "username role avatarUrl");
-  return notification;
+const getMyUnreadNotificationCount = async (userId) => {
+  return notificationService.getUnreadCount(userId);
 };
 
 export default {
@@ -282,6 +232,7 @@ export default {
   getMyNotifications,
   listUsers,
   login,
+  getMyUnreadNotificationCount,
   markNotificationRead,
   register,
   sendNotification,
